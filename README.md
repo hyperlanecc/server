@@ -1,4 +1,4 @@
-# Hyperlane Backend API
+# Hyperlane Server API
 
 基于 Go + Gin 的社区平台后端服务
 
