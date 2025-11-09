@@ -77,7 +77,24 @@ type AccessTokenRequest struct {
 	Code         string `json:"code"`
 }
 
-// 定义响应的结构体
+// GitHub OAuth Access Token Response
+type GitHubAccessTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	Scope       string `json:"scope"`
+}
+
+// GitHub User API Response
+type GitHubUserResponse struct {
+	Login     string `json:"login"`
+	ID        int    `json:"id"`
+	AvatarURL string `json:"avatar_url"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	HTMLURL   string `json:"html_url"`
+}
+
+// 定义响应的结构体（自定义 OAuth 服务）
 type AccessTokenResponse struct {
 	Status int `json:"status"`
 	Code   int `json:"code"`
@@ -151,38 +168,6 @@ type UpdateArticleRequest struct {
 
 type UpdateBlogPublishStatusRequest struct {
 	PublishStatus uint `json:"publish_status"`
-}
-
-// tutorial
-type CreateTutorialRequest struct {
-	Title      string   `json:"title" binding:"required"`
-	Desc       string   `json:"desc" binding:"required"`
-	Content    string   `json:"content" binding:"required"`
-	Author     string   `json:"author" binding:"required"`
-	SourceLink string   `json:"source_link"`
-	CoverImg   string   `json:"cover_img" binding:"required"`
-	Tags       []string `json:"tags"`
-}
-
-type QueryTutorialsResponse struct {
-	Tutorials []models.Tutorial `json:"tutorials"`
-	Page      int               `json:"page"`
-	PageSize  int               `json:"page_size"`
-	Total     int64             `json:"total"`
-}
-
-type UpdateTutorialRequest struct {
-	Title      string   `json:"title" binding:"required"`
-	Desc       string   `json:"desc" binding:"required"`
-	Content    string   `json:"content" binding:"required"`
-	Author     string   `json:"author" binding:"required"`
-	SourceLink string   `json:"source_link"`
-	CoverImg   string   `json:"cover_img" binding:"required"`
-	Tags       []string `json:"tags"`
-}
-
-type UpdateTutorialPublishStatusRequest struct {
-	PublishStatus uint `json:"publish_status" binding:"required"`
 }
 
 // feedback

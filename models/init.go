@@ -14,7 +14,6 @@ func init() {
 	db.AutoMigrate(&Event{})
 	db.AutoMigrate(&Recap{})
 	db.AutoMigrate(&Article{})
-	db.AutoMigrate(&Tutorial{})
 	db.AutoMigrate(&Feedback{})
 	db.AutoMigrate(&Post{})
 	db.AutoMigrate(&PostLike{})

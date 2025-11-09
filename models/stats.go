@@ -9,12 +9,11 @@ import (
 
 type DailyStats struct {
 	gorm.Model
-	Date      time.Time `gorm:"uniqueIndex"`
-	Users     int
-	Blogs     int
-	Tutorials int
-	Events    int
-	Posts     int
+	Date   time.Time `gorm:"uniqueIndex"`
+	Users  int
+	Blogs  int
+	Events int
+	Posts  int
 }
 
 type CategoryStats struct {
@@ -26,11 +25,10 @@ type CategoryStats struct {
 }
 
 type StatsOverview struct {
-	Users     CategoryStats `json:"users"`
-	Blogs     CategoryStats `json:"blogs"`
-	Tutorials CategoryStats `json:"tutorials"`
-	Events    CategoryStats `json:"events"`
-	Posts     CategoryStats `json:"posts"`
+	Users  CategoryStats `json:"users"`
+	Blogs  CategoryStats `json:"blogs"`
+	Events CategoryStats `json:"events"`
+	Posts  CategoryStats `json:"posts"`
 }
 
 type StatsResponse struct {
@@ -60,11 +58,10 @@ func GetStatsOverview() (StatsResponse, error) {
 	monthAgo := stats[0]
 
 	var statsOverview = StatsOverview{
-		Users:     buildCategoryStats(latest.Users, weekAgo.Users, monthAgo.Users),
-		Blogs:     buildCategoryStats(latest.Blogs, weekAgo.Blogs, monthAgo.Blogs),
-		Tutorials: buildCategoryStats(latest.Tutorials, weekAgo.Tutorials, monthAgo.Tutorials),
-		Events:    buildCategoryStats(latest.Events, weekAgo.Events, monthAgo.Events),
-		Posts:     buildCategoryStats(latest.Posts, weekAgo.Posts, monthAgo.Posts),
+		Users:  buildCategoryStats(latest.Users, weekAgo.Users, monthAgo.Users),
+		Blogs:  buildCategoryStats(latest.Blogs, weekAgo.Blogs, monthAgo.Blogs),
+		Events: buildCategoryStats(latest.Events, weekAgo.Events, monthAgo.Events),
+		Posts:  buildCategoryStats(latest.Posts, weekAgo.Posts, monthAgo.Posts),
 	}
 	resp.Overview = &statsOverview
 
@@ -125,23 +122,20 @@ func CollectDailyStats() error {
 
 	var usersCount int64
 	var blogsCount int64
-	var tutorialsCount int64
 	var eventsCount int64
 	var postsCount int64
 
 	db.Model(&User{}).Count(&usersCount)
 	db.Model(&Article{}).Count(&blogsCount)
-	db.Model(&Tutorial{}).Count(&tutorialsCount)
 	db.Model(&Event{}).Count(&eventsCount)
 	db.Model(&Post{}).Count(&postsCount)
 
 	stats := DailyStats{
-		Date:      today,
-		Users:     int(usersCount),
-		Blogs:     int(blogsCount),
-		Tutorials: int(tutorialsCount),
-		Events:    int(eventsCount),
-		Posts:     int(postsCount),
+		Date:   today,
+		Users:  int(usersCount),
+		Blogs:  int(blogsCount),
+		Events: int(eventsCount),
+		Posts:  int(postsCount),
 	}
 	if err := db.Create(&stats).Error; err != nil {
 		log.Println("Failed to store daily stats:", err)
@@ -153,12 +147,11 @@ func CollectDailyStats() error {
 }
 
 type TimeSeriesData struct {
-	Date      string `json:"date"`
-	Users     int    `json:"users"`
-	Blogs     int    `json:"blogs"`
-	Tutorials int    `json:"tutorials"`
-	Events    int    `json:"events"`
-	Posts     int    `json:"posts"`
+	Date   string `json:"date"`
+	Users  int    `json:"users"`
+	Blogs  int    `json:"blogs"`
+	Events int    `json:"events"`
+	Posts  int    `json:"posts"`
 }
 
 func GetLast7DaysStats() ([]TimeSeriesData, error) {
@@ -176,12 +169,11 @@ func GetLast7DaysStats() ([]TimeSeriesData, error) {
 	var trend []TimeSeriesData
 	for _, s := range statsList {
 		trend = append(trend, TimeSeriesData{
-			Date:      s.Date.Format("2006-01-02"),
-			Users:     s.Users,
-			Blogs:     s.Blogs,
-			Tutorials: s.Tutorials,
-			Events:    s.Events,
-			Posts:     s.Posts,
+			Date:   s.Date.Format("2006-01-02"),
+			Users:  s.Users,
+			Blogs:  s.Blogs,
+			Events: s.Events,
+			Posts:  s.Posts,
 		})
 	}
 

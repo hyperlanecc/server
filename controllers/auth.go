@@ -30,6 +30,11 @@ func HandleLogin(c *gin.Context) {
 	reqArgs.Method = "POST"
 	reqArgs.Body = accessRequest
 
+	// GitHub OAuth requires Accept header for JSON response
+	header := make(map[string]string)
+	header["Accept"] = "application/json"
+	reqArgs.Headers = header
+
 	var result string
 	var err error
 	result, err = utils.SendHTTPRequest(reqArgs)
@@ -39,25 +44,27 @@ func HandleLogin(c *gin.Context) {
 		return
 	}
 
-	var tokenResp AccessTokenResponse
+	// Parse GitHub OAuth response
+	var tokenResp GitHubAccessTokenResponse
 	err = json.Unmarshal([]byte(result), &tokenResp)
 	if err != nil {
-		logger.Log.Errorf("ServerError: %v", err)
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Network error, please try again later.", nil)
+		logger.Log.Errorf("Failed to parse access token response: %v", err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to parse OAuth response", nil)
 		return
 	}
 
-	if tokenResp.Status != 200 {
-		logger.Log.Errorf("ServerError: %v", tokenResp)
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Network error, please try again later.", nil)
+	if tokenResp.AccessToken == "" {
+		logger.Log.Errorf("Empty access token received: %v", tokenResp)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Invalid OAuth response", nil)
 		return
 	}
 
-	accessToken := tokenResp.Data.Token
+	accessToken := tokenResp.AccessToken
 	reqArgs.URL = viper.GetString("oauth.getUser")
 	reqArgs.Method = "GET"
 
-	header := make(map[string]string)
+	// Reuse header map for user API request
+	header = make(map[string]string)
 	header["Authorization"] = fmt.Sprintf("Bearer %s", accessToken)
 	reqArgs.Headers = header
 
@@ -68,38 +75,43 @@ func HandleLogin(c *gin.Context) {
 		return
 	}
 
-	var resp GetUserResponse
-	err = json.Unmarshal([]byte(userResult), &resp)
+	// Parse GitHub User response
+	var githubUser GitHubUserResponse
+	err = json.Unmarshal([]byte(userResult), &githubUser)
 	if err != nil {
-		logger.Log.Errorf("Unmarshal err: %v", err)
-		utils.ErrorResponse(c, http.StatusInternalServerError, "Network error, please try again later.", nil)
+		logger.Log.Errorf("Failed to parse user response: %v", err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to parse user data", nil)
 		return
 	}
 
-	if resp.Status != 200 {
-		logger.Log.Errorf("ServerError: %v", resp)
-		utils.ErrorResponse(c, http.StatusInternalServerError, resp.Message, nil)
+	if githubUser.ID == 0 {
+		logger.Log.Errorf("Invalid user data received: %v", githubUser)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Invalid user data", nil)
 		return
 	}
 
 	var user *models.User
 
-	userId := resp.Data.Uid
+	// Use GitHub ID as Uid
+	userId := uint(githubUser.ID)
 	user, err = models.GetUserByUid(userId)
 	if err == nil {
-		user.Uid = resp.Data.Uid
-		// user.Avatar = resp.Data.Avatar  // 在 hyperlane 修改
-		// user.Username = resp.Data.UserName
-		user.Email = resp.Data.Email
-		user.Github = resp.Data.Github
+		// Update existing user
+		user.Uid = userId
+		user.Email = githubUser.Email
+		user.Github = githubUser.HTMLURL
 		err = models.UpdateUser(user)
 	} else {
+		// Create new user
 		var u models.User
-		u.Uid = resp.Data.Uid
-		u.Avatar = resp.Data.Avatar
-		u.Email = resp.Data.Email
-		u.Username = resp.Data.UserName
-		u.Github = resp.Data.Github
+		u.Uid = userId
+		u.Avatar = githubUser.AvatarURL
+		u.Email = githubUser.Email
+		u.Username = githubUser.Login
+		if githubUser.Name != "" {
+			u.Username = githubUser.Name
+		}
+		u.Github = githubUser.HTMLURL
 		user = &u
 		err = models.CreateUser(user)
 	}

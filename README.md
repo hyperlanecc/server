@@ -77,16 +77,6 @@ go build -o hyperlane
 | GET | `/v1/blogs` | 查询博客列表 | - |
 | PUT | `/v1/blogs/:id/status` | 更新发布状态 | blog:review |
 
-### 📚 教程管理
-| Method | Endpoint | 说明 | 权限要求 |
-|--------|----------|------|----------|
-| POST | `/v1/tutorials` | 创建教程 | tutorial:write |
-| DELETE | `/v1/tutorials/:id` | 删除教程 | tutorial:delete |
-| PUT | `/v1/tutorials/:id` | 更新教程 | tutorial:write |
-| GET | `/v1/tutorials/:id` | 获取教程详情 | - |
-| GET | `/v1/tutorials` | 查询教程列表 | - |
-| PUT | `/v1/tutorials/:id/status` | 更新发布状态 | tutorial:review |
-
 ### 💬 帖子管理
 | Method | Endpoint | 说明 | 权限要求 |
 |--------|----------|------|----------|
@@ -130,9 +120,6 @@ Authorization: Bearer <your_token>
 - `event:write` - 活动写权限
 - `event:delete` - 活动删除权限
 - `event:review` - 活动审核权限
-- `tutorial:write` - 教程写权限
-- `tutorial:delete` - 教程删除权限
-- `tutorial:review` - 教程审核权限
 
 ---
 

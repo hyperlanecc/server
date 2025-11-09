@@ -45,15 +45,6 @@ func SetupRouter(r *gin.Engine) {
 		blog.GET("", controllers.QueryArticles)
 		blog.PUT("/:id/status", middlewares.JWT("blog:review"), controllers.UpdateArticlePublishStatus)
 	}
-	tutorial := r.Group("/v1/tutorials")
-	{
-		tutorial.POST("", middlewares.JWT("tutorial:write"), controllers.CreateTutorial)
-		tutorial.DELETE("/:id", middlewares.JWT("tutorial:delete"), controllers.DeleteTutorial)
-		tutorial.PUT("/:id", middlewares.JWT("tutorial:write"), controllers.UpdateTutorial)
-		tutorial.GET("/:id", controllers.GetTutorial)
-		tutorial.GET("", controllers.QueryTutorials)
-		tutorial.PUT("/:id/status", middlewares.JWT("tutorial:review"), controllers.UpdateTutorialPublishStatus)
-	}
 	feedback := r.Group("/v1/feedbacks")
 	{
 		feedback.POST("", middlewares.JWT(""), controllers.CreateFeedback)
