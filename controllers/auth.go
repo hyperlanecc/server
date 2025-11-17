@@ -141,3 +141,118 @@ func HandleLogin(c *gin.Context) {
 	loginResp.Token = token
 	utils.SuccessResponse(c, http.StatusOK, "success", loginResp)
 }
+
+// HandleOAuthCallback 处理 OAuth GET 回调请求
+func HandleOAuthCallback(c *gin.Context) {
+	// 从 URL 查询参数获取 code
+	code := c.Query("code")
+	if code == "" {
+		logger.Log.Error("Missing code parameter in OAuth callback")
+		c.Redirect(http.StatusFound, "https://www.hyperlane.cc/login?error=missing_code")
+		return
+	}
+
+	// 构造登录请求
+	var accessRequest AccessTokenRequest
+	accessRequest.ClientId = viper.GetString("oauth.clientId")
+	accessRequest.ClientSecret = viper.GetString("oauth.clientSecret")
+	accessRequest.Code = code
+
+	var reqArgs utils.HTTPRequestParams
+	reqArgs.URL = viper.GetString("oauth.accessApi")
+	reqArgs.Method = "POST"
+	reqArgs.Body = accessRequest
+
+	header := make(map[string]string)
+	header["Accept"] = "application/json"
+	reqArgs.Headers = header
+
+	result, err := utils.SendHTTPRequest(reqArgs)
+	if err != nil {
+		logger.Log.Errorf("OAuth access token error: %v", err)
+		c.Redirect(http.StatusFound, "https://www.hyperlane.cc/login?error=oauth_failed")
+		return
+	}
+
+	var tokenResp GitHubAccessTokenResponse
+	err = json.Unmarshal([]byte(result), &tokenResp)
+	if err != nil || tokenResp.AccessToken == "" {
+		logger.Log.Errorf("Invalid OAuth token response: %v", err)
+		c.Redirect(http.StatusFound, "https://www.hyperlane.cc/login?error=invalid_token")
+		return
+	}
+
+	// 获取用户信息
+	accessToken := tokenResp.AccessToken
+	reqArgs.URL = viper.GetString("oauth.getUser")
+	reqArgs.Method = "GET"
+	header = make(map[string]string)
+	header["Authorization"] = fmt.Sprintf("Bearer %s", accessToken)
+	reqArgs.Headers = header
+
+	userResult, err := utils.SendHTTPRequest(reqArgs)
+	if err != nil {
+		logger.Log.Errorf("Get user info error: %v", err)
+		c.Redirect(http.StatusFound, "https://www.hyperlane.cc/login?error=user_info_failed")
+		return
+	}
+
+	var githubUser GitHubUserResponse
+	err = json.Unmarshal([]byte(userResult), &githubUser)
+	if err != nil || githubUser.ID == 0 {
+		logger.Log.Errorf("Invalid user data: %v", err)
+		c.Redirect(http.StatusFound, "https://www.hyperlane.cc/login?error=invalid_user")
+		return
+	}
+
+	// 创建或更新用户
+	var user *models.User
+	userId := uint(githubUser.ID)
+	user, err = models.GetUserByUid(userId)
+
+	if err == nil {
+		// 更新已存在的用户
+		user.Uid = userId
+		user.Email = githubUser.Email
+		user.Github = githubUser.HTMLURL
+		err = models.UpdateUser(user)
+	} else {
+		// 创建新用户
+		var u models.User
+		u.Uid = userId
+		u.Avatar = githubUser.AvatarURL
+		u.Email = githubUser.Email
+		u.Username = githubUser.Login
+		if githubUser.Name != "" {
+			u.Username = githubUser.Name
+		}
+		u.Github = githubUser.HTMLURL
+		user = &u
+		err = models.CreateUser(user)
+	}
+
+	if err != nil {
+		logger.Log.Errorf("Save user error: %v", err)
+		c.Redirect(http.StatusFound, "https://www.hyperlane.cc/login?error=save_user_failed")
+		return
+	}
+
+	// 获取用户权限
+	perms, err := models.GetUserWithPermissions(user.ID)
+	if err != nil {
+		logger.Log.Errorf("Get permissions error: %v", err)
+		c.Redirect(http.StatusFound, "https://www.hyperlane.cc/login?error=permissions_failed")
+		return
+	}
+
+	// 生成 JWT token
+	token, err := utils.GenerateToken(user.ID, user.Email, user.Avatar, user.Username, user.Github, perms)
+	if err != nil {
+		logger.Log.Errorf("Generate token error: %v", err)
+		c.Redirect(http.StatusFound, "https://www.hyperlane.cc/login?error=token_failed")
+		return
+	}
+
+	// 成功：重定向到首页并带上 token
+	c.Redirect(http.StatusFound, fmt.Sprintf("https://www.hyperlane.cc/?token=%s", token))
+}

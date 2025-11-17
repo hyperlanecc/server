@@ -10,6 +10,8 @@ import (
 func SetupRouter(r *gin.Engine) {
 	r.Use(middlewares.Cors())
 
+	r.GET("/v1/auth/callback", controllers.HandleOAuthCallback)
+
 	r.POST("/v1/login", controllers.HandleLogin)
 
 	user := r.Group("v1/users")
