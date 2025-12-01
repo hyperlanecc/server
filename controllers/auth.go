@@ -79,18 +79,18 @@ func processOAuthLogin(code string) (*LoginResponse, error) {
 		return nil, fmt.Errorf("network error")
 	}
 
-	// Parse GitHub OAuth response
-	var tokenResp GitHubAccessTokenResponse
+	// Parse OpenBuild OAuth response
+	var tokenResp AccessTokenResponse
 	err = json.Unmarshal([]byte(result), &tokenResp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse oauth response")
 	}
 
-	if tokenResp.AccessToken == "" {
+	if tokenResp.Data.Token == "" {
 		return nil, fmt.Errorf("invalid oauth response")
 	}
 
-	accessToken := tokenResp.AccessToken
+	accessToken := tokenResp.Data.Token
 	reqArgs.URL = viper.GetString("oauth.getUser")
 	reqArgs.Method = "GET"
 
@@ -104,39 +104,36 @@ func processOAuthLogin(code string) (*LoginResponse, error) {
 		return nil, fmt.Errorf("network error")
 	}
 
-	// Parse GitHub User response
-	var githubUser GitHubUserResponse
-	err = json.Unmarshal([]byte(userResult), &githubUser)
+	// Parse OpenBuild User response
+	var openBuildUser GetUserResponse
+	err = json.Unmarshal([]byte(userResult), &openBuildUser)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse user data")
 	}
 
-	if githubUser.ID == 0 {
+	if openBuildUser.Data.Uid == 0 {
 		return nil, fmt.Errorf("invalid user data")
 	}
 
 	var user *models.User
 
-	// Use GitHub ID as Uid
-	userId := uint(githubUser.ID)
+	// Use OpenBuild ID as Uid
+	userId := openBuildUser.Data.Uid
 	user, err = models.GetUserByUid(userId)
 	if err == nil {
 		// Update existing user
 		user.Uid = userId
-		user.Email = githubUser.Email
-		user.Github = githubUser.HTMLURL
+		user.Email = openBuildUser.Data.Email
+		user.Github = openBuildUser.Data.Github
 		err = models.UpdateUser(user)
 	} else {
 		// Create new user
 		var u models.User
 		u.Uid = userId
-		u.Avatar = githubUser.AvatarURL
-		u.Email = githubUser.Email
-		u.Username = githubUser.Login
-		if githubUser.Name != "" {
-			u.Username = githubUser.Name
-		}
-		u.Github = githubUser.HTMLURL
+		u.Avatar = openBuildUser.Data.Avatar
+		u.Email = openBuildUser.Data.Email
+		u.Username = openBuildUser.Data.UserName
+		u.Github = openBuildUser.Data.Github
 		user = &u
 		err = models.CreateUser(user)
 	}
