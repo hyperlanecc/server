@@ -75,6 +75,7 @@ type AccessTokenRequest struct {
 	ClientId     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
 	Code         string `json:"code"`
+	RedirectUri  string `json:"redirect_uri"`
 }
 
 // GitHub OAuth Access Token Response
