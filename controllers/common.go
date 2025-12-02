@@ -75,7 +75,6 @@ type AccessTokenRequest struct {
 	ClientId     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
 	Code         string `json:"code"`
-	RedirectUri  string `json:"redirect_uri"`
 }
 
 // GitHub OAuth Access Token Response
@@ -95,17 +94,6 @@ type GitHubUserResponse struct {
 	HTMLURL   string `json:"html_url"`
 }
 
-// 定义响应的结构体（自定义 OAuth 服务）
-type AccessTokenResponse struct {
-	Status int `json:"status"`
-	Code   int `json:"code"`
-	Data   struct {
-		Token string `json:"token"`
-	} `json:"data"`
-	Time    int64  `json:"time"`
-	Message string `json:"message"`
-	ID      string `json:"id"`
-}
 
 // 定义数据部分的结构体
 type UserData struct {

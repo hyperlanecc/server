@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"hyperlane/logger"
@@ -62,7 +63,6 @@ func processOAuthLogin(code string) (*LoginResponse, error) {
 	accessRequest.ClientId = viper.GetString("oauth.clientId")
 	accessRequest.ClientSecret = viper.GetString("oauth.clientSecret")
 	accessRequest.Code = code
-	accessRequest.RedirectUri = viper.GetString("oauth.redirectUri")
 
 	var reqArgs utils.HTTPRequestParams
 	reqArgs.URL = viper.GetString("oauth.accessApi")
@@ -72,25 +72,30 @@ func processOAuthLogin(code string) (*LoginResponse, error) {
 	// GitHub OAuth requires Accept header for JSON response
 	header := make(map[string]string)
 	header["Accept"] = "application/json"
+	// Add Basic Auth header
+	auth := accessRequest.ClientId + ":" + accessRequest.ClientSecret
+	basicAuth := base64.StdEncoding.EncodeToString([]byte(auth))
+	header["Authorization"] = "Basic " + basicAuth
 	reqArgs.Headers = header
 
+	logger.Log.Infof("Sending OAuth request:  %s", reqArgs)
 	result, err := utils.SendHTTPRequest(reqArgs)
 	if err != nil {
 		return nil, fmt.Errorf("network error")
 	}
 
+	logger.Log.Infof("OAuth response: %s", result)
 	// Parse OpenBuild OAuth response
-	var tokenResp AccessTokenResponse
+
+	var tokenResp struct {
+		AccessToken string `json:"access_token"`
+	}
 	err = json.Unmarshal([]byte(result), &tokenResp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse oauth response")
 	}
 
-	if tokenResp.Data.Token == "" {
-		return nil, fmt.Errorf("invalid oauth response")
-	}
-
-	accessToken := tokenResp.Data.Token
+	accessToken := tokenResp.AccessToken
 	reqArgs.URL = viper.GetString("oauth.getUser")
 	reqArgs.Method = "GET"
 
@@ -99,26 +104,26 @@ func processOAuthLogin(code string) (*LoginResponse, error) {
 	header["Authorization"] = fmt.Sprintf("Bearer %s", accessToken)
 	reqArgs.Headers = header
 
+	logger.Log.Infof("Sending OpenBuild user request:  %s", reqArgs)
 	userResult, err := utils.SendHTTPRequest(reqArgs)
 	if err != nil {
 		return nil, fmt.Errorf("network error")
 	}
-
+	logger.Log.Infof("OpenBuild user response: %s", userResult)
 	// Parse OpenBuild User response
 	var openBuildUser GetUserResponse
 	err = json.Unmarshal([]byte(userResult), &openBuildUser)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse user data")
 	}
-
-	if openBuildUser.Data.Uid == 0 {
-		return nil, fmt.Errorf("invalid user data")
-	}
+	logger.Log.Infof("OpenBuild user data: %+v", openBuildUser)
 
 	var user *models.User
-
 	// Use OpenBuild ID as Uid
 	userId := openBuildUser.Data.Uid
+
+	logger.Log.Infof("Using OpenBuild user ID: %d", userId)
+
 	user, err = models.GetUserByUid(userId)
 	if err == nil {
 		// Update existing user
@@ -138,6 +143,8 @@ func processOAuthLogin(code string) (*LoginResponse, error) {
 		err = models.CreateUser(user)
 	}
 
+	logger.Log.Infof("User info: %+v", user)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to save user")
 	}
@@ -152,6 +159,8 @@ func processOAuthLogin(code string) (*LoginResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token")
 	}
+
+	logger.Log.Infof("Generated token: %s", token)
 
 	return &LoginResponse{
 		User:        *user,
