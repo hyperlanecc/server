@@ -10,7 +10,7 @@ config.yaml
 hyperlane
 /bin/
 /dist/
-
+./app
 # 测试和覆盖率
 *.test
 *.out
