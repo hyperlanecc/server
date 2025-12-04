@@ -16,7 +16,7 @@ func SetupRouter(r *gin.Engine) {
 
 		api.POST("/v1/login", controllers.HandleLogin)
 
-		user := api.Group("v1/users")
+		user := api.Group("/v1/users")
 		{
 			user.PUT("/:id", middlewares.JWT(""), controllers.UpdateUser)
 			user.GET("/:id", controllers.GetUser)
